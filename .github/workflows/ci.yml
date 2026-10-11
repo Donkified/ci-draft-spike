@@ -1,0 +1,29 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+jobs:
+  work:
+    name: Work
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 150
+  ci-complete:
+    # Spike: on a draft this job reports under another name, so no "CI Complete" check exists on a draft head.
+    name: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft) && 'CI (draft, not run)' || 'CI Complete' }}
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [work]
+    steps:
+      - name: Check CI results
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ] && [ "${{ github.event.pull_request.draft }}" = true ]; then
+            echo "Draft: nothing run, by design."
+            exit 0
+          fi
+          [ "${{ needs.work.result }}" = success ] || { echo "work: ${{ needs.work.result }}"; exit 1; }
